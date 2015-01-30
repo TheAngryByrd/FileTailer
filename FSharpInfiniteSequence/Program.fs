@@ -7,7 +7,7 @@ open FSharp.Control
 [<EntryPoint>]
 let main argv = 
     
-    FileTailer.TailFile @"C:\Users\jimmy_000\Documents\test.txt" 
+    FileTailer.TailFile @"C:\Users\jimmy_000\Documents\test\test.txt" 
         |> AsyncSeq.iter Console.WriteLine
         |> Async.Start
  

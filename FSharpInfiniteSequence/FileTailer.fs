@@ -3,37 +3,43 @@ open System
 open System.IO
 open FSharp.Control
 
-let private createWatcher path =
-    let watcher = new FileSystemWatcher()
-    let dirInfo = DirectoryInfo(path)
-    watcher.Path <- dirInfo.Parent.FullName
-    watcher.Filter <- dirInfo.Name
-    watcher.EnableRaisingEvents <- true
-    watcher
+//
+//type Streaming =
+//    | File of StreamReader
+//    | InMemory of StreamReader
 
-let private openFileAsReadOnly path = new StreamReader(new FileStream(path,FileMode.Open, FileAccess.Read, FileShare.ReadWrite ||| FileShare.Delete))
+let private openFileAsReadOnly path = 
+    if File.Exists path then
+         new StreamReader(new FileStream(path,FileMode.Open, FileAccess.Read, FileShare.ReadWrite ||| FileShare.Delete)) 
+    else
+         new StreamReader(new MemoryStream()) 
 
 let private tailFileInit path = asyncSeq {
-    let stream = path |> openFileAsReadOnly |> ref
-    let watcher = createWatcher path
+    let stream = path |> openFileAsReadOnly
+    stream.ReadToEndAsync() |> Async.AwaitTask |> ignore
     
-    watcher.Renamed.Subscribe(fun _ ->   
-                                    try
-                                        stream := path |> openFileAsReadOnly
-                                    with
-                                    | ex -> ()) |> ignore //if we couldn't re-open the file, it was probably moved
-                          
-    watcher.Created.Subscribe(fun _ ->   
-                                stream := path |> openFileAsReadOnly) |> ignore
+    let rec read (streamer : StreamReader) =   asyncSeq {
+            do! Async.Sleep 1
+            if File.Exists(path) |> not  then 
+                streamer.Dispose()
+                yield! tryLoadFile(path)
 
-    (!stream).ReadToEndAsync() |> Async.AwaitTask |> ignore
-
-    let rec loop (streamer : ref<StreamReader>) =   asyncSeq{
-        do! Async.Sleep 1
-        yield (!streamer).ReadLine()
-        yield! loop (streamer)
+            while streamer.EndOfStream |> not do
+                yield streamer.ReadLine()
+           
+            yield! read (streamer)
         }
-    yield! loop (stream)
+        and tryLoadFile(path : string) = asyncSeq {
+            do! Async.Sleep 1
+            if File.Exists(path) |> not  then 
+                yield! tryLoadFile(path)
+            else 
+                let newStream = path |> openFileAsReadOnly
+                newStream.BaseStream.Seek(int64 0, SeekOrigin.Begin) |> ignore
+                yield! read(newStream)
+        } 
+
+    yield! read (stream)
 }
 
 let private filterOutNullString tailFile =
