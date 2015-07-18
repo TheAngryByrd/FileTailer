@@ -15,7 +15,7 @@ let source = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "Hello3.txt")
 printfn "%s" source
 
 
-let getFileAsync = FileTailerModule.getAsyncFileRead FileTailerModule.getRetryFilePath
+let getFileAsync = FileTailerModule.getAsyncFileRead'
 
 let readFile = getFileAsync source FileTailerModule.TrackOption.TrackByName |> AsyncSeq.map(sprintf "File1 - %s") |> AsyncSeq.iter(printfn "%s")
 let readFile2 = getFileAsync source FileTailerModule.TrackOption.DoNotTrack |> AsyncSeq.map(sprintf "File2 - %s") |> AsyncSeq.iter(printfn "%s")

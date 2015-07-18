@@ -70,7 +70,7 @@ module FileTailerModule =
         | (WindowsFile oldWStat, WindowsFile newWStat) -> isSameFileWindows oldWStat newWStat
         | (UnixFile oldUStat, UnixFile newUStat) -> isSameFilePosix oldUStat newUStat
         | _ -> false
-    
+    let isNotSameFile x =  isSameFile x >> not
     let getFileStat filePath = 
         match () with
         | Windows -> getWindowsFileStat filePath
@@ -102,35 +102,33 @@ module FileTailerModule =
     
     let getAsyncFileRead howToGetFile filename trackFile = 
         asyncSeq { 
-            let! file = howToGetFile filename false
-            let outerfileStat = getFileStat filename
-            
+           
             let rec readLoop (stream : StreamReader) (oldFileStat : FileStats) = 
                 asyncSeq { 
                     match trackFile with
-                    | TrackByName when not <| ((fun () -> 
+                    | TrackByName when (fun () -> 
                                             filename
                                             |> getFileStat
-                                            |> isSameFile oldFileStat)
-                                            |> TryWithDefault true) ->
-                        let! newfile = howToGetFile filename true
-                        let newfileStat = getFileStat filename
-                        yield! readLoop newfile newfileStat
-                     
+                                            |> isNotSameFile oldFileStat)
+                                            |> TryWithDefault false ->
+
+                        yield! openFile filename true
                     | _ -> 
                         let! line = stream.AsyncReadLine()
                         match line with
                         | Some v -> 
                             yield v
-                            yield! readLoop stream oldFileStat
-                        | None -> yield! rest stream oldFileStat               
+                        | None -> 
+                            do! Async.Sleep 1
+                        yield! readLoop stream oldFileStat
                 }
-            
-            and rest (stream : StreamReader) (fileStat : FileStats) = 
+            and openFile filename fromRotate = 
                 asyncSeq { 
-                    do! Async.Sleep 1
-                    yield! readLoop stream fileStat
+                    let! newfile = howToGetFile filename fromRotate
+                    let newfileStat = getFileStat filename
+                    yield! readLoop newfile newfileStat
                 }
-            
-            yield! readLoop file outerfileStat
+
+            yield! openFile filename false
         }
+    let getAsyncFileRead' = getAsyncFileRead getRetryFilePath
