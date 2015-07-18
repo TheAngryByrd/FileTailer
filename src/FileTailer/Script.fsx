@@ -27,7 +27,7 @@ let appendAllLines (path : string) (lines : seq<string>) = File.AppendAllLines(p
 
 
 async {
-    [1 .. 10000] 
+    [1 .. 10] 
     |> Seq.map(string)    
     //|> appendAllLines source
     |> Seq.iter (fun x -> appendAllLines source [x]) 

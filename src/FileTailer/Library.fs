@@ -71,9 +71,11 @@ module FileTailerModule =
             return streamReader
         }
     let getRetryFilePath filePath fromRotate = async {
+        let dontskipSome = fromRotate || (not <| File.Exists filePath)
+
         while not <| File.Exists filePath do
             do! Async.Sleep 100
-        return! getFile filePath fromRotate
+        return! getFile filePath dontskipSome
     }
     
     let inline private TryWithDefault defaultVal f =
