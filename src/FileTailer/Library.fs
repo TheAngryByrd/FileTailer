@@ -111,7 +111,7 @@ module FileTailerModule =
                                             |> getFileStat
                                             |> isNotSameFile oldFileStat)
                                             |> TryWithDefault false ->
-
+                        stream.Close()
                         yield! openFile filename true
                     | _ -> 
                         let! line = stream.AsyncReadLine()
