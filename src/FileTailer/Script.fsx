@@ -3,6 +3,7 @@
 
 
 #r "../../lib/FSharp.AsyncExtensions.dll"
+#r "../../packages/Mono.Posix/lib/net40/Mono.Posix.dll"
 #load "Library.fs"
 open FileTailer
 open FSharp.Control
@@ -14,21 +15,22 @@ let source = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "Hello3.txt")
 printfn "%s" source
 
 
-let getFileAsync = FileTailerModule.getAsyncFileRead FileTailerModule.getRetryFilePath 
+let getFileAsync = FileTailerModule.getAsyncFileRead FileTailerModule.getRetryFilePath
 
-let readFile = getFileAsync source |> AsyncSeq.iter(fun s -> printfn "%s" s)
+let readFile = getFileAsync source true |> AsyncSeq.map(sprintf "File1 - %s") |> AsyncSeq.iter(printfn "%s")
+let readFile2 = getFileAsync source true |> AsyncSeq.map(sprintf "File2 - %s") |> AsyncSeq.iter(printfn "%s")
 let cToken = new CancellationTokenSource()
 Async.Start(readFile,cToken.Token)
+Async.Start(readFile2,cToken.Token)
 
 let appendAllLines (path : string) (lines : seq<string>) = File.AppendAllLines(path, lines)
 
 
 async {
-    [1 .. 1000000] 
-    |> Seq.map(string) 
-    |> appendAllLines source
-
-    //|> Seq.iter (fun x -> appendAllLines source [x]) 
+    [1 .. 10000] 
+    |> Seq.map(string)    
+    //|> appendAllLines source
+    |> Seq.iter (fun x -> appendAllLines source [x]) 
     } |> Async.Start
 
 cToken.Cancel()
