@@ -17,8 +17,8 @@ printfn "%s" source
 
 let getFileAsync = FileTailerModule.getAsyncFileRead FileTailerModule.getRetryFilePath
 
-let readFile = getFileAsync source true |> AsyncSeq.map(sprintf "File1 - %s") |> AsyncSeq.iter(printfn "%s")
-let readFile2 = getFileAsync source true |> AsyncSeq.map(sprintf "File2 - %s") |> AsyncSeq.iter(printfn "%s")
+let readFile = getFileAsync source FileTailerModule.TrackOption.TrackByName |> AsyncSeq.map(sprintf "File1 - %s") |> AsyncSeq.iter(printfn "%s")
+let readFile2 = getFileAsync source FileTailerModule.TrackOption.DoNotTrack |> AsyncSeq.map(sprintf "File2 - %s") |> AsyncSeq.iter(printfn "%s")
 let cToken = new CancellationTokenSource()
 Async.Start(readFile,cToken.Token)
 Async.Start(readFile2,cToken.Token)

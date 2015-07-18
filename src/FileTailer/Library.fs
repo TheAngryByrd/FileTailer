@@ -96,7 +96,9 @@ module FileTailerModule =
     let inline private TryWithDefault defaultVal f = 
         try 
             f()
-        with ex -> defaultVal
+        with | ex -> defaultVal
+
+    type TrackOption = TrackByName | DoNotTrack
     
     let getAsyncFileRead howToGetFile filename trackFile = 
         asyncSeq { 
@@ -105,22 +107,23 @@ module FileTailerModule =
             
             let rec readLoop (stream : StreamReader) (oldFileStat : FileStats) = 
                 asyncSeq { 
-                    if trackFile && not <| ((fun () -> 
+                    match trackFile with
+                    | TrackByName when not <| ((fun () -> 
                                             filename
                                             |> getFileStat
                                             |> isSameFile oldFileStat)
-                                            |> TryWithDefault true)
-                    then 
+                                            |> TryWithDefault true) ->
                         let! newfile = howToGetFile filename true
                         let newfileStat = getFileStat filename
                         yield! readLoop newfile newfileStat
-                    else 
+                     
+                    | _ -> 
                         let! line = stream.AsyncReadLine()
                         match line with
                         | Some v -> 
                             yield v
                             yield! readLoop stream oldFileStat
-                        | None -> yield! rest stream oldFileStat
+                        | None -> yield! rest stream oldFileStat               
                 }
             
             and rest (stream : StreamReader) (fileStat : FileStats) = 
